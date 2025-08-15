@@ -1,74 +1,63 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
-import { z } from 'zod'; // zod를 가져옵니다.
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { z } from 'zod';
 
-// Gemini API 클라이언트를 초기화합니다.
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
-
-// 1. zod를 사용해 요청 데이터의 유효성 검사 규칙(Schema)을 정의합니다.
-const blogPromptSchema = z.object({
-  templateType: z.literal('blog'), // templateType은 반드시 'blog'여야 합니다.
+// 1. Zod를 사용해 프론트엔드에서 받을 데이터의 형식을 정의하고 검증합니다.
+const promptSchema = z.object({
+  templateType: z.string().min(1, "템플릿 종류는 필수입니다."),
   inputs: z.object({
-    topic: z.string().min(2, { message: "주제는 2글자 이상 입력해주세요." }), // topic은 2글자 이상의 문자열이어야 합니다.
-    targetAudience: z.string().min(2, { message: "대상 독자는 2글자 이상 입력해주세요." }),
-    tone: z.string().min(2, { message: "톤앤매너는 2글자 이상 입력해주세요." }),
-    constraints: z.string().optional(), // constraints는 문자열이지만, 필수는 아닙니다.
-  }),
+    topic: z.string().optional(),
+    targetAudience: z.string().optional(),
+    tone: z.string().optional(),
+    constraints: z.string().optional(),
+  }).passthrough(), // 정의되지 않은 추가 속성도 허용
 });
 
-// 이 API는 /api/generate-prompt 경로로 POST 요청을 처리합니다.
+// 2. Gemini API 클라이언트를 초기화합니다. API 키는 .env.local 파일에서 안전하게 불러옵니다.
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // 2. 받은 데이터(body)를 우리가 정의한 규칙(Schema)으로 검사합니다.
-    const validationResult = blogPromptSchema.safeParse(body);
-
-    // 3. 유효성 검사에 실패했을 경우, 구체적인 에러 메시지를 반환합니다.
-    if (!validationResult.success) {
+    // 3. Zod를 사용해 들어온 데이터를 파싱하고 검증합니다. 실패하면 에러를 던집니다.
+    const validation = promptSchema.safeParse(body);
+    if (!validation.success) {
+      // 수정된 부분: validation.error.errors -> validation.error.issues
+      const errorMessage = validation.error.issues.map(e => e.message).join(', ');
       return NextResponse.json(
-        { 
-          error: 'INVALID_INPUT', 
-          message: '입력값이 유효하지 않습니다.',
-          details: validationResult.error.flatten().fieldErrors, // 어떤 필드가 왜 잘못되었는지 상세 정보 추가
-        },
+        { error: 'INVALID_INPUT', message: errorMessage },
         { status: 400 }
       );
     }
+    
+    const { templateType, inputs } = validation.data;
 
-    // 유효성 검사를 통과한 안전한 데이터만 사용합니다.
-    const { templateType, inputs } = validationResult.data;
+    // 4. (개선된 프롬프트) API 명세서에 맞게, 더 구체적인 최종 프롬프트를 생성합니다.
+    const finalPrompt = `
+      ### 역할(Role)
+      너는 IT 콘텐츠 크리에이터이자, 복잡한 기술을 ${inputs.targetAudience || '독자'} 눈높이에 맞춰 아주 쉽게 설명해주는 전문가야.
 
-    // 4. 템플릿 종류에 따라 Gemini에게 보낼 프롬프트를 동적으로 생성합니다.
-    // (이 부분은 이전과 동일합니다)
-    let promptForAI = '';
-    switch (templateType) {
-      case 'blog':
-        promptForAI = `
-          ### 역할(Role)
-          너는 ${inputs.targetAudience}를 위한 IT 콘텐츠 크리에이터이자, 복잡한 기술을 아주 쉽게 설명해주는 전문가야.
-          ### 맥락(Context)
-          '${inputs.topic}'에 대한 블로그 글을 작성하려고 해. 독자들이 이 글을 통해 유용한 정보를 얻고, 자신감을 얻게 하는 것이 목표야.
-          ### 지시(Instruction)
-          위 맥락에 맞춰, 블로그 글의 초안을 작성해줘.
-          ### 제약(Constraints)
-          - 전체 글자 수는 600자 내외로 작성해줘.
-          - '${inputs.tone}' 톤앤매너를 사용해줘.
-          - ${inputs.constraints ? `그리고 다음 제약사항을 반드시 지켜줘: ${inputs.constraints}` : ''}
-        `;
-        break;
-      default:
-        // 이 부분은 zod 스키마에서 이미 처리되지만, 안전장치로 남겨둡니다.
-        return NextResponse.json({ error: 'INVALID_TEMPLATE_TYPE' }, { status: 400 });
-    }
+      ### 맥락(Context)
+      '${templateType}' 형식으로 글을 작성하려고 해. 주제는 '${inputs.topic || '정해진 주제 없음'}'이고, 전체적인 톤은 '${inputs.tone || '일반적인'}' 톤을 유지해야 해.
 
-    // 5. 실제로 Gemini API를 호출합니다.
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const result = await model.generateContent(promptForAI);
+      ### 지시(Instruction)
+      위 역할과 맥락에 맞춰, 글의 초안을 작성해줘.
+
+      ### 제약(Constraints)
+      - ${inputs.constraints || '특별한 제약 없음'}
+      - 결과는 마크다운 형식으로 작성해줘.
+    `;
+
+    // 5. Gemini 모델을 선택하고, 생성된 프롬프트로 텍스트 생성을 요청합니다.
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
+    const result = await model.generateContent(finalPrompt);
     const response = await result.response;
-    const finalPrompt = response.text();
+    const text = response.text();
 
-    return NextResponse.json({ finalPrompt });
+    // 6. 성공적으로 생성된 텍스트를 프론트엔드로 보냅니다.
+    // finalPrompt 대신 실제 AI가 생성한 text를 보내도록 수정했습니다.
+    return NextResponse.json({ finalPrompt: text });
 
   } catch (e) {
     console.error('프롬프트 생성 실패:', e);
