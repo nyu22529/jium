@@ -5,7 +5,7 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { Agent } from 'undici';
 
-// --- 백엔드 설정 (이전과 동일) ---
+// --- 백엔드 설정 ---
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
@@ -24,9 +24,7 @@ const ratelimit = new Ratelimit({
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
-// --- 유효성 검사 규칙 확장 ---
-
-// 1. 기존 템플릿 규칙들
+// --- 유효성 검사 규칙 ---
 const blogPromptSchema = z.object({
   templateType: z.literal('blog'),
   inputs: z.object({
@@ -48,7 +46,6 @@ const emailPromptSchema = z.object({
   }),
 });
 
-// 2. '하루 회고' 템플릿 규칙 새로 정의
 const dailyReflectionSchema = z.object({
   templateType: z.literal('dailyReflection'),
   inputs: z.object({
@@ -59,11 +56,10 @@ const dailyReflectionSchema = z.object({
   }),
 });
 
-// 3. 세 가지 규칙을 모두 합침
 const combinedSchema = z.discriminatedUnion("templateType", [
   blogPromptSchema,
   emailPromptSchema,
-  dailyReflectionSchema, // 새로 추가
+  dailyReflectionSchema,
 ]);
 
 // --- API 요청 처리 ---
@@ -85,51 +81,37 @@ export async function POST(request: Request) {
           details: validationResult.error.flatten().fieldErrors,
         },{ status: 400 });
     }
-
-    const { templateType, inputs } = validationResult.data;
     
-    let promptForAI = '';
+    const validatedData = validationResult.data;
     
-    // 4. 핵심 로직: 'dailyReflection' 케이스 추가
-    switch (templateType) {
-      case 'blog':
-        promptForAI = `### 역할(Role)\n너는 ${inputs.targetAudience}를 위한 IT 콘텐츠 크리에이터야...\n`;
-        break;
-      
-      case 'email':
-        promptForAI = `### 역할(Role)\n너는 커뮤니케이션 전문가야...\n`;
-        break;
+    // --- 2단계 프롬프트 엔지니어링 시작 ---
 
-      case 'dailyReflection':
-        promptForAI = `
-          ### 역할(Role)
-          너는 공감 능력이 뛰어나고 따뜻한 시선을 가진 라이프 코치이자, 하루의 경험에서 의미를 찾아주는 저널링 파트너야.
+    // 1. 1단계 프롬프트 (내부용): 사용자의 입력을 바탕으로, AI에게 '최종 프롬프트를 만들어달라'고 요청하는 우리만의 비밀 프롬프트.
+    const metaPrompt = `
+      You are an expert-level Prompt Engineer for a Korean audience. 
+      Your task is to create a final, optimized, and effective prompt for a large language model based on the user's raw inputs.
 
-          ### 맥락(Context)
-          나는 오늘 하루를 마무리하며 회고를 하고 있어. 오늘 나에게 있었던 가장 중요한 사건은 "${inputs.moment}"이고, 그때 "${inputs.feeling}"을 느꼈어. 이 경험을 통해 "${inputs.learning}"라는 교훈을 얻었지.
-          ${inputs.regret ? `한편으로는 "${inputs.regret}" 라는 생각도 들었어.` : ''}
+      RULES:
+      1. The final prompt must be a single, coherent paragraph written in natural Korean.
+      2. It must include crucial English keywords in parentheses, like (keyword), to maximize the LLM's performance.
+      3. DO NOT use markdown like '### Role' or bullet points. Combine everything into a professional, ready-to-use paragraph.
+      4. The tone of the final prompt should be polite and direct.
 
-          ### 지시(Instruction)
-          위 맥락을 바탕으로, 나의 하루를 정리하고 성찰할 수 있는 따뜻한 회고록 초안을 작성해줘. 나의 성취를 축하해주고, 배움의 가치를 되새겨주며, 아쉬웠던 점에 대해서는 따뜻한 격려와 함께 앞으로 나아갈 수 있는 긍정적인 메시지를 담아줘.
+      Here are the user's raw inputs:
+      - Template Type: ${validatedData.templateType}
+      - User Inputs: ${JSON.stringify(validatedData.inputs, null, 2)}
 
-          ### 제약(Constraints)
-          - 전체 글은 3~4문단으로 구성해줘.
-          - 친근하고 다정한 말투를 사용해줘.
-          ${inputs.regret && inputs.regret.includes("잘했어") ? '- 마지막에는 내가 나에게 해준 말("그래도 잘했어!")을 인용해서 마무리해줘.' : ''}
-        `;
-        break;
+      Now, generate the final, user-facing prompt based on these rules and inputs.
+    `;
 
-      default:
-        return NextResponse.json({ error: 'INVALID_TEMPLATE_TYPE' }, { status: 400 });
-    }
-
-    // AI 호출 및 응답 (이전과 동일)
+    // 2. AI 호출 (1차): 비밀 프롬프트로 '최종 프롬프트'를 생성시킴
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    const result = await model.generateContent(promptForAI);
+    const result = await model.generateContent(metaPrompt);
     const response = await result.response;
-    const text = response.text();
+    const finalOptimizedPrompt = response.text(); // AI가 만들어준, 사용자에게 보여줄 최종 프롬프트
 
-    return NextResponse.json({ finalPrompt: text });
+    // 3. 최종 결과 반환
+    return NextResponse.json({ finalPrompt: finalOptimizedPrompt });
 
   } catch (e) {
     console.error("프롬프트 생성 실패:", e);
