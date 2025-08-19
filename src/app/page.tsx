@@ -7,7 +7,7 @@ interface Message {
   id: number;
   text: string;
   sender: 'user' | 'ai';
-  isFinal?: boolean; // [기능 추가] 최종 결과물 메시지인지 여부
+  isFinal?: boolean;
 }
 
 interface Suggestion {
@@ -49,6 +49,7 @@ const conversationFlows: Record<string, ConversationStep[]> = {
   ],
 };
 
+// --- 초기 상태 정의 ---
 const initialMessages: Message[] = [
     { id: 1, text: '안녕하세요! 저는 당신의 AI 어시스턴트, 지음입니다. 어떤 결과물을 만들고 싶으신가요?', sender: 'ai' },
 ];
@@ -70,7 +71,7 @@ export default function JiumChatPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>(initialSuggestions);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null); // [기능 추가] 복사된 메시지 ID 저장
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   
   const [conversationState, setConversationState] = useState<{
     templateType: string | null;
@@ -122,9 +123,15 @@ export default function JiumChatPage() {
         throw new Error(errorText);
       }
       
-      // [기능 추가] 최종 메시지임을 표시 (isFinal: true)
       const aiFinalMessage: Message = { id: messageIdCounter.current++, text: data.finalPrompt, sender: 'ai', isFinal: true };
-      setMessages(prev => [...prev, aiFinalMessage]);
+      
+      // [기능 구현] '다시 시작' 제안 메시지 추가
+      const followUpMessage: Message = { id: messageIdCounter.current++, text: '다른 결과물을 만들어 드릴까요?', sender: 'ai' };
+      
+      setMessages(prev => [...prev, aiFinalMessage, followUpMessage]);
+      setSuggestions(initialSuggestions); // 초기 선택지 버튼 다시 보여주기
+      setConversationState(initialConversationState); // 대화 상태 초기화
+
     } catch (error: any) {
       const errorMessage: Message = { id: messageIdCounter.current++, text: `죄송해요, 생성 중 문제가 발생했어요.\n\n[에러 상세]\n${error.message}`, sender: 'ai' };
       setMessages(prev => [...prev, errorMessage]);
@@ -150,6 +157,7 @@ export default function JiumChatPage() {
         const firstAiMessage: Message = { id: messageIdCounter.current++, text: firstStep.question, sender: 'ai' };
         setMessages(prev => [...prev, firstAiMessage]);
         setSuggestions(firstStep.suggestions || []);
+        // [기능 구현] 대화 상태 초기화 후 새로운 템플릿으로 시작
         setConversationState({ templateType: selectedTemplate, currentStep: 0, inputs: {} });
       } else {
         const unsupportedMessage: Message = { id: messageIdCounter.current++, text: '죄송해요, 아직 지원하지 않는 기능이에요. 아래 버튼 중에서 선택해 주시겠어요?', sender: 'ai' };
@@ -166,9 +174,7 @@ export default function JiumChatPage() {
     }
   };
 
-  // [기능 추가] 클립보드 복사 함수
   const handleCopyToClipboard = (text: string, messageId: number) => {
-    // navigator.clipboard가 불안정할 수 있어, 구식 execCommand를 사용합니다.
     const textArea = document.createElement("textarea");
     textArea.value = text;
     document.body.appendChild(textArea);
@@ -177,7 +183,7 @@ export default function JiumChatPage() {
     try {
       document.execCommand('copy');
       setCopiedMessageId(messageId);
-      setTimeout(() => setCopiedMessageId(null), 2000); // 2초 후 버튼 텍스트 원래대로
+      setTimeout(() => setCopiedMessageId(null), 2000);
     } catch (err) {
       console.error('클립보드 복사 실패:', err);
     }
@@ -222,7 +228,6 @@ export default function JiumChatPage() {
                   </div>
                 </div>
               )}
-              {/* [기능 추가] 최종 메시지일 경우 복사 버튼 렌더링 */}
               {msg.isFinal && (
                 <div className="flex justify-start pl-12 -mt-2">
                     <button 
