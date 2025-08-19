@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link'; // Link 컴포넌트 import
 
 // --- 타입 정의 ---
 interface Message {
@@ -125,12 +126,11 @@ export default function JiumChatPage() {
       
       const aiFinalMessage: Message = { id: messageIdCounter.current++, text: data.finalPrompt, sender: 'ai', isFinal: true };
       
-      // [기능 구현] '다시 시작' 제안 메시지 추가
       const followUpMessage: Message = { id: messageIdCounter.current++, text: '다른 결과물을 만들어 드릴까요?', sender: 'ai' };
       
       setMessages(prev => [...prev, aiFinalMessage, followUpMessage]);
-      setSuggestions(initialSuggestions); // 초기 선택지 버튼 다시 보여주기
-      setConversationState(initialConversationState); // 대화 상태 초기화
+      setSuggestions(initialSuggestions);
+      setConversationState(initialConversationState);
 
     } catch (error: any) {
       const errorMessage: Message = { id: messageIdCounter.current++, text: `죄송해요, 생성 중 문제가 발생했어요.\n\n[에러 상세]\n${error.message}`, sender: 'ai' };
@@ -157,7 +157,6 @@ export default function JiumChatPage() {
         const firstAiMessage: Message = { id: messageIdCounter.current++, text: firstStep.question, sender: 'ai' };
         setMessages(prev => [...prev, firstAiMessage]);
         setSuggestions(firstStep.suggestions || []);
-        // [기능 구현] 대화 상태 초기화 후 새로운 템플릿으로 시작
         setConversationState({ templateType: selectedTemplate, currentStep: 0, inputs: {} });
       } else {
         const unsupportedMessage: Message = { id: messageIdCounter.current++, text: '죄송해요, 아직 지원하지 않는 기능이에요. 아래 버튼 중에서 선택해 주시겠어요?', sender: 'ai' };
@@ -272,6 +271,12 @@ export default function JiumChatPage() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
             </button>
           </form>
+          {/* [기능 추가] 개인정보처리방침 링크 */}
+          <div className="text-center mt-3">
+            <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
+              개인정보처리방침
+            </Link>
+          </div>
         </footer>
       </div>
     </div>
