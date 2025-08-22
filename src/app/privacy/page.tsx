@@ -1,3 +1,5 @@
+// src/app/privacy/page.tsx
+
 import Link from 'next/link';
 import React from 'react';
 
@@ -12,13 +14,13 @@ export default function PrivacyPolicyPage() {
 
         <div className="space-y-6 text-gray-700">
           <p>
-            안녕하세요! AI 프롬프트 어시스턴트 '지음(Jium)' 팀입니다. 저희는 여러분의 개인정보를 소중하게 생각하며, 꼭 필요한 최소한의 정보만을 투명하게 처리하기 위해 노력하고 있습니다.
+            안녕하세요! AI 프롬프트 어시스턴트 &apos;지음(Jium)&apos; 팀입니다. 저희는 여러분의 개인정보를 소중하게 생각하며, 꼭 필요한 최소한의 정보만을 투명하게 처리하기 위해 노력하고 있습니다.
           </p>
 
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">1. 수집하는 개인정보 항목 및 수집 목적</h2>
             <p>
-              저희 '지음'은 회원가입 없이 누구나 이용할 수 있으며, 여러분을 식별할 수 있는 이름, 이메일 등의 정보는 일절 수집하지 않습니다. 다만, 안정적인 서비스 제공과 부정 이용 방지를 위해 아래와 같은 정보가 자동으로, 그리고 익명으로 수집될 수 있습니다.
+              저희 &apos;지음&apos;은 회원가입 없이 누구나 이용할 수 있으며, 여러분을 식별할 수 있는 이름, 이메일 등의 정보는 일절 수집하지 않습니다. 다만, 안정적인 서비스 제공과 부정 이용 방지를 위해 아래와 같은 정보가 자동으로, 그리고 익명으로 수집될 수 있습니다.
             </p>
             <ul className="list-disc list-inside mt-2 pl-4 bg-gray-50 p-4 rounded-lg">
               <li><strong>수집 항목:</strong> IP 주소</li>
@@ -32,7 +34,7 @@ export default function PrivacyPolicyPage() {
           <div>
             <h2 className="text-xl font-semibold text-gray-800 mb-2">2. 제3자 서비스 이용에 대한 안내</h2>
             <p>
-              '지음'은 사용자의 요청에 따라 최적의 프롬프트를 생성하기 위해 Google의 Gemini API를 사용하고 있습니다. 여러분이 입력한 내용은 Google의 서버로 전송되어 처리됩니다. Google의 개인정보 처리에 대한 자세한 내용은 아래 링크를 통해 확인하실 수 있습니다.
+              &apos;지음&apos;은 사용자의 요청에 따라 최적의 프롬프트를 생성하기 위해 Google의 Gemini API를 사용하고 있습니다. 여러분이 입력한 내용은 Google의 서버로 전송되어 처리됩니다. Google의 개인정보 처리에 대한 자세한 내용은 아래 링크를 통해 확인하실 수 있습니다.
             </p>
             <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline">
               Google 개인정보처리방침
@@ -51,8 +53,14 @@ export default function PrivacyPolicyPage() {
             <p>
               개인정보처리방침에 대해 궁금한 점이 있으시면 아래 이메일로 언제든지 문의해주세요.
             </p>
-            <p className="font-medium">이메일: jium.assistant@gmail.com</p>
+            <p className="font-medium">이메일: gnyu22529@gmail.com</p>
           </div>
+
+          <p className="text-center pt-4">
+            &apos;지음&apos; 팀은 앞으로도 여러분이 안심하고 서비스를 이용할 수 있도록 최선을 다하겠습니다.
+            <br />
+            감사합니다.
+          </p>
         </div>
 
         <div className="text-center mt-10">

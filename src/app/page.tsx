@@ -29,7 +29,7 @@ const conversationFlows: Record<string, ConversationStep[]> = {
     { question: '글을 읽는 독자는 누구인가요?', key: 'targetAudience' },
     { question: '어떤 톤으로 글을 쓸까요?', key: 'tone', suggestions: [{ text: '친근하게' }, { text: '전문적으로' }, { text: '유머있게' }] },
     { question: '글에 꼭 포함되어야 할 내용이 있나요? (없으면 "없음")', key: 'constraints' },
-    { question: '모든 준비가 끝났어요! 아래 버튼을 눌러 글을 생성해 보세요.', key: 'final', suggestions: [{ text: '✨ 프롬프트 생성하기', isFinal: true }], isButtonOnly: true },
+    { question: '모든 준비가 끝났어요! 아래 버튼을 눌러 글을 생성해 보세요.', key: 'final', suggestions: [{ text: '프롬프트 생성하기', isFinal: true }], isButtonOnly: true },
   ],
   '이메일 작성': [
     { question: '누구에게 보내는 이메일인가요?', key: 'recipient' },
@@ -37,14 +37,14 @@ const conversationFlows: Record<string, ConversationStep[]> = {
     { question: '이메일에 들어갈 핵심 내용을 알려주세요.', key: 'emailBody' },
     { question: '어떤 톤으로 작성할까요?', key: 'tone', suggestions: [{ text: '정중하게' }, { text: '친근하게' }, { text: '간결하게' }] },
     { question: '추가로 포함하고 싶은 정보가 있나요? (없으면 "없음")', key: 'additionalInfo' },
-    { question: '좋아요! 아래 버튼을 눌러 이메일 초안을 생성해 보세요.', key: 'final', suggestions: [{ text: '✨ 이메일 생성하기', isFinal: true }], isButtonOnly: true },
+    { question: '좋아요! 아래 버튼을 눌러 이메일 초안을 생성해 보세요.', key: 'final', suggestions: [{ text: '이메일 생성하기', isFinal: true }], isButtonOnly: true },
   ],
   '오늘의 회고': [
     { question: '오늘 가장 인상 깊었거나 기억에 남는 순간은 무엇이었나요?', key: 'moment' },
     { question: '그 순간 어떤 감정을 느꼈나요?', key: 'feeling' },
     { question: '그 경험을 통해 무엇을 배우거나 느꼈나요?', key: 'learning' },
     { question: '혹시 아쉬웠던 점이나, 내일을 위한 다짐이 있다면 들려주세요. (없으면 "없음")', key: 'regret' },
-    { question: '당신의 하루를 들려줘서 고마워요. 회고 글을 작성해 드릴게요.', key: 'final', suggestions: [{ text: '✨ 회고 글 생성하기', isFinal: true }], isButtonOnly: true },
+    { question: '당신의 하루를 들려줘서 고마워요. 회고 글을 작성해 드릴게요.', key: 'final', suggestions: [{ text: '회고 글 생성하기', isFinal: true }], isButtonOnly: true },
   ],
 };
 
@@ -132,10 +132,11 @@ export default function JiumChatPage() {
             
             const aiFinalMessage: Message = { id: getUniqueId(), text: data.finalPrompt, sender: 'ai', isFinal: true };
             setMessages(prev => [...prev, aiFinalMessage]);
-        } catch (error: any) {
-            const errorMessage: Message = { id: getUniqueId(), text: `죄송해요, 생성 중 문제가 발생했어요.\n\n[에러 상세]\n${error.message}`, sender: 'ai' };
-            setMessages(prev => [...prev, errorMessage]);
-        } finally {
+        } catch (error: unknown) { // any를 unknown으로 변경
+    const errorAsError = error as Error; // 타입을 Error로 간주
+    const errorMessage: Message = { id: getUniqueId(), text: `죄송해요, 생성 중 문제가 발생했어요.\n\n[에러 상세]\n${errorAsError.message}`, sender: 'ai' };
+    setMessages(prev => [...prev, errorMessage]);
+} finally {
             setIsLoading(false);
             setTimeout(() => handleRestart(true), 1000);
         }
@@ -219,11 +220,28 @@ export default function JiumChatPage() {
           <div className="w-full max-w-2xl h-[90vh] max-h-[800px] bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden border border-gray-200">
             <header className="flex items-center justify-between p-4 border-b border-gray-200 bg-white z-10 flex-shrink-0">
               <h1 className="text-xl font-bold text-gray-800">Jium</h1>
-              <button onClick={() => handleRestart(false)} className="p-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="다시 시작">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-gray-600">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0 8.25 8.25 0 0 0 0-11.667l-3.182-3.182m0-4.991v4.99" />
-                </svg>
-              </button>
+              <button 
+  onClick={() => handleRestart(false)} 
+  className="p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-all duration-200" 
+  aria-label="다시 시작"
+>
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    fill="none" 
+    viewBox="0 0 24 24" 
+    strokeWidth={2} // 선의 굵기를 살짝 조정하여 선명함을 더했습니다.
+    stroke="currentColor" 
+    className="w-5 h-5" // 크기를 미세하게 줄여 UI에 자연스럽게 녹아들도록 했습니다.
+  >
+    <title>다시 시작</title>
+    <path 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0 8.25 8.25 0 0 0 0-11.667l-3.182-3.182m0-4.991v4.99" 
+    />
+  </svg>
+</button>
+
             </header>
             <main ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto custom-scrollbar space-y-2">
               {messages.map((msg) => (
