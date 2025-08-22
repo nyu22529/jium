@@ -24,7 +24,7 @@ const ratelimit = new Ratelimit({
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 
-// --- 유효성 검사 규칙 ---
+// --- 유효성 검사 규칙 정의 ---
 const blogPromptSchema = z.object({
   templateType: z.literal('blog'),
   inputs: z.object({
@@ -63,13 +63,11 @@ const combinedSchema = z.discriminatedUnion("templateType", [
 ]);
 
 // --- API 요청 처리 ---
-
 export async function POST(request: Request) {
-  // 보안 및 데이터 검사 (이전과 동일)
   const ip = request.headers.get('x-forwarded-for') ?? '127.0.0.1';
   const { success } = await ratelimit.limit(ip);
   if (!success) {
-    return NextResponse.json({ error: 'TOO_MANY_REQUESTS' }, { status: 429 });
+    return NextResponse.json({ error: 'TOO_MANY_REQUESTS', message: '요청이 너무 많습니다.' }, { status: 429 });
   }
 
   try {
@@ -84,9 +82,6 @@ export async function POST(request: Request) {
     
     const validatedData = validationResult.data;
     
-    // --- 2단계 프롬프트 엔지니어링 시작 ---
-
-    // 1. 1단계 프롬프트 (내부용): 사용자의 입력을 바탕으로, AI에게 '최종 프롬프트를 만들어달라'고 요청하는 우리만의 비밀 프롬프트.
     const metaPrompt = `
       You are an expert-level Prompt Engineer for a Korean audience. 
       Your task is to create a final, optimized, and effective prompt for a large language model based on the user's raw inputs.
@@ -104,17 +99,15 @@ export async function POST(request: Request) {
       Now, generate the final, user-facing prompt based on these rules and inputs.
     `;
 
-    // 2. AI 호출 (1차): 비밀 프롬프트로 '최종 프롬프트'를 생성시킴
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     const result = await model.generateContent(metaPrompt);
     const response = await result.response;
-    const finalOptimizedPrompt = response.text(); // AI가 만들어준, 사용자에게 보여줄 최종 프롬프트
+    const finalOptimizedPrompt = response.text();
 
-    // 3. 최종 결과 반환
     return NextResponse.json({ finalPrompt: finalOptimizedPrompt });
 
   } catch (e) {
     console.error("프롬프트 생성 실패:", e);
-    return NextResponse.json({ error: 'GENERATION_FAILED' }, { status: 500 });
+    return NextResponse.json({ error: 'GENERATION_FAILED', message: '프롬프트 생성에 실패했습니다.' }, { status: 500 });
   }
 }

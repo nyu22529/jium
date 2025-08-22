@@ -7,7 +7,7 @@ export default function PrivacyPolicyPage() {
       <div className="max-w-3xl mx-auto bg-white p-8 sm:p-10 rounded-2xl shadow-lg border border-gray-200">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">개인정보처리방침</h1>
-          <p className="text-sm text-gray-500 mt-2">시행일자: 2025년 8월 17일</p>
+          <p className="text-sm text-gray-500 mt-2">시행일자: 2025년 8월 22일</p>
         </div>
 
         <div className="space-y-6 text-gray-700">
@@ -53,12 +53,6 @@ export default function PrivacyPolicyPage() {
             </p>
             <p className="font-medium">이메일: jium.assistant@gmail.com</p>
           </div>
-
-          <p className="text-center pt-4">
-            '지음' 팀은 앞으로도 여러분이 안심하고 서비스를 이용할 수 있도록 최선을 다하겠습니다.
-            <br />
-            감사합니다.
-          </p>
         </div>
 
         <div className="text-center mt-10">
